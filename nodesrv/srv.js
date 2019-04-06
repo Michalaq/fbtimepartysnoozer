@@ -35,50 +35,78 @@ function findBartosz(api, onId) {
     });
 }
 
-loginParams = {};
+function mkLoginParams() {
+    loginParams = {};
 
-try {
-    state = JSON.parse(fs.readFileSync("state.json", "utf8"));
-    loginParams.appState = state;
-} catch (err) {
-    console.log("err getting old state: " + err);
-    console.log("Login required");
-    var email = readlineSync.question("email: ");
-    var passw = readlineSync.question("password: ", {hideEchoBack: true});
-    loginParams.email = email;
-    loginParams.password = passw;
+    try {
+        state = JSON.parse(fs.readFileSync("state.json", "utf8"));
+        loginParams.appState = state;
+    } catch (err) {
+        console.log("err getting old state: " + err);
+        console.log("Login required");
+        var email = readlineSync.question("email: ");
+        var passw = readlineSync.question("password: ", {hideEchoBack: true});
+        loginParams.email = email;
+        loginParams.password = passw;
+    }
+
+    return loginParams;
 }
 
-login(loginParams, (err, api) => {
-    if (err) return console.error(err);
+function Srv(onLogin) {
+    this.snoozedOn = new Set();
+    this.myId = null;
+    this.api = null;
 
-    fs.writeFileSync("state.json", JSON.stringify(api.getAppState()));
+    this.sendTo = function(id) {
+        this.api.getThreadHistory(id, 10, undefined, (err, history) => {
+            if (err) return console.error(err);
 
-    var myId = api.getCurrentUserID();
+            console.log("history:");
+            console.log(history);
 
-    findBartosz(api, (id) => {
+            ans({"history": history, "myId": this.myId} , (body) => {
+                // console.log("processed:")
+                // console.log(body.processed);
+
+                d = body.ans.toString();
+                console.log("sending: " + d);
+                this.api.sendMessage(d, id);
+            });
+        });
+    };
+
+    this.snooze = function(id, now) {
+        this.snoozedOn.add(id);
+        if (now) {
+            this.sendTo(id);
+        }
+    };
+
+    this.unsnooze = function(id) {
+        this.snoozedOn.delete(id);
+    }
+
+    login(mkLoginParams(), (err, api) => {
+        if (err) return console.error(err);
+
+        fs.writeFileSync("state.json", JSON.stringify(api.getAppState()));
+
+        this.api = api;
+        this.myId = api.getCurrentUserID();
+
         api.listen((err, msg) => {
             if (err) return console.error(err);
 
-            if (msg.senderID == id) {
-                api.getThreadHistory(id, 10, undefined, (err, history) => {
-                    if (err) return console.error(err);
-
-                    console.log("history:");
-                    console.log(history);
-
-
-                    ans({"history": history, "myId": myId} , (body) => {
-                        // console.log("processed:")
-                        // console.log(body.processed);
-
-                        d = body.ans.toString();
-                        console.log("sending: " + d);
-                        api.sendMessage(d, id);
-                    });
-                });
+            if (this.snoozedOn.has(msg.threadID)) {
+                this.sendTo(msg.threadID);
             }
         });
 
+        onLogin(api);
     });
+}
+
+srv = new Srv((api) => {
+    findBartosz(api, (id) => srv.snooze(id, false));
 });
