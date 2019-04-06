@@ -1,0 +1,24 @@
+{
+  "name": "fbtimenodesrv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "srv.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Michalaq/fbtimepartysnoozer.git"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Michalaq/fbtimepartysnoozer/issues"
+  },
+  "homepage": "https://github.com/Michalaq/fbtimepartysnoozer#readme",
+  "dependencies": {
+    "express": "^4.16.4",
+    "facebook-chat-api": "^1.6.1",
+    "readline-sync": "^1.4.9"
+  }
+}
