@@ -61,32 +61,38 @@ function Srv(onLogin) {
     this.api = null;
     this.startedYet = false;
 
-    this.suggest = function(id, onMsg, onFail) {
+    this.findThread = function(id, onThread, onFail) {
         this.api.getThreadList(10, null, [], (err, list) => {
-            for (var i = 0; i < list.length; ++i) {
-                if (id == list[i].threadID) {
-                    return this.api.getThreadHistory(id, 10, undefined, (err, history) => {
-                        if (err) return console.error(err);
-
-                        // console.log("history:");
-                        // console.log(history);
-
-                        ans({"history": history, "myId": this.myId} , (body) => {
-                            // console.log("processed:")
-                            // console.log(body.processed);
-
-                            d = body.ans.toString();
-                            onMsg(d);
-                        });
-                    });
+            if (!list.some((t) => { return t.threadID == id; })) {
+                const failMsg = "No such threadID";
+                console.log(failMsg);
+                if (onFail) {
+                    onFail(failMsg);
                 }
+                return;
             }
 
-            var failMsg = "No such threadID";
-            console.log(failMsg);
-            onFail(failMsg);
-        });
+            this.api.getThreadHistory(id, 10, undefined, (err, history) => {
+                if (err) return console.error(err);
 
+                return onThread(history);
+            });
+        });
+    }
+
+    this.suggest = function(id, onMsg, onFail) {
+        return this.findThread(id, (history) => {
+            // console.log("history:");
+            // console.log(history);
+
+            ans({"history": history, "myId": this.myId} , (body) => {
+                // console.log("processed:")
+                // console.log(body.processed);
+
+                d = body.ans.toString();
+                onMsg(d);
+            });
+        }, onFail);
     };
 
     this.sendTo = function(id, onSend, onFail) {
@@ -100,11 +106,9 @@ function Srv(onLogin) {
         }, onFail);
     };
 
-    this.snooze = function(id, now) {
+    this.snooze = function(id) {
         this.snoozedOn.add(id);
-        if (now) {
-            this.sendTo(id);
-        }
+        this.sendTo(id);
     };
 
     this.unsnooze = function(id) {
@@ -154,7 +158,7 @@ app.post('/snooze/:userId', (req, res) => {
     }
 
     srv.snooze(req.params.userId, false);
-    res.send("Snoozed");
+    res.send("Snoozed\n");
 });
 
 app.post('/unsnooze/:userId', (req, res) => {
