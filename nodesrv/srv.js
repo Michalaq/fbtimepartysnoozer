@@ -3,6 +3,7 @@ const login = require("facebook-chat-api");
 const request = require("request");
 const readlineSync = require("readline-sync");
 const express = require('express');
+const cors = require('cors');
 
 function ans(j, onRespBody) {
     var options = {
@@ -60,10 +61,27 @@ function Srv(onLogin) {
     this.api = null;
     this.startedYet = false;
 
-    this.suggest = function(id, onMsg) {
-        this.api.getThreadHistory(id, 10, undefined, (err, history) => {
-            if (err) return console.error(err);
+    this.findThread = function(id, onThread, onFail) {
+        this.api.getThreadList(10, null, [], (err, list) => {
+            if (!list.some((t) => { return t.threadID == id; })) {
+                const failMsg = "No such threadID";
+                console.log(failMsg);
+                if (onFail) {
+                    onFail(failMsg);
+                }
+                return;
+            }
 
+            this.api.getThreadHistory(id, 10, undefined, (err, history) => {
+                if (err) return console.error(err);
+
+                return onThread(history);
+            });
+        });
+    }
+
+    this.suggest = function(id, onMsg, onFail) {
+        return this.findThread(id, (history) => {
             // console.log("history:");
             // console.log(history);
 
@@ -74,10 +92,10 @@ function Srv(onLogin) {
                 d = body.ans.toString();
                 onMsg(d);
             });
-        });
+        }, onFail);
     };
 
-    this.sendTo = function(id, onSend) {
+    this.sendTo = function(id, onSend, onFail) {
         this.suggest(id, (msg) => {
             console.log("sending: " + d);
             this.api.sendMessage(d, id);
@@ -85,14 +103,12 @@ function Srv(onLogin) {
             if (onSend) {
                 onSend(d);
             }
-        });
+        }, onFail);
     };
 
-    this.snooze = function(id, now) {
+    this.snooze = function(id) {
         this.snoozedOn.add(id);
-        if (now) {
-            this.sendTo(id);
-        }
+        this.sendTo(id);
     };
 
     this.unsnooze = function(id) {
@@ -128,6 +144,12 @@ srv = new Srv((api) => {
 const app = express();
 const port = 3000;
 const notStartedMsg = "Server not started yet, try again in a second";
+const corsOptions = {
+    origin: '*',
+    credentials:  true
+};
+
+app.use(cors(corsOptions));
 
 app.post('/snooze/:userId', (req, res) => {
     if (!srv.startedYet) {
@@ -136,7 +158,7 @@ app.post('/snooze/:userId', (req, res) => {
     }
 
     srv.snooze(req.params.userId, false);
-    res.send("Snoozed");
+    res.send("Snoozed\n");
 });
 
 app.post('/unsnooze/:userId', (req, res) => {
@@ -150,7 +172,11 @@ app.post('/send/:userId', (req, res) => {
         return;
     }
 
-    srv.sendTo(req.params.userId, (msg) => res.send("Sent: " + msg + "\n"));
+    srv.sendTo(
+        req.params.userId,
+        (msg) => res.send("Sent: " + msg + "\n"),
+        (msg) => res.send("Failed: " + msg + "\n")
+    );
 });
 
 app.get('/suggest/:userId', (req, res) => {
@@ -159,7 +185,36 @@ app.get('/suggest/:userId', (req, res) => {
         return;
     }
 
-    srv.suggest(req.params.userId, (msg) => res.send(msg + "\n"));
+    srv.suggest(
+        req.params.userId,
+        (msg) => res.send(msg + "\n"),
+        (msg) => res.send("Failed: " + msg + "\n")
+    );
+});
+
+app.get('/lastUsers', (req, res) => {
+    if (!srv.startedYet) {
+        res.status(503).send(notStartedMsg);
+        return;
+    }
+
+    srv.api.getThreadList(15, null, [], (err, list) => {
+        users = [].concat.apply([],
+            list.filter((t) => { return !t.isGroup; })
+                .map((t) => { return t.participants.filter((p) => { return p.accountType == "User"; }); }))
+                .filter((p) => { return p.userID != srv.myId; });
+
+        console.log(users);
+
+        res.send(users.map((u) => {
+            return {
+                "userID": u.userID,
+                "pic": u.profilePicture,
+                "name": u.name,
+                "snoozed": srv.snoozedOn.has(u.userID)
+            };
+        }));
+    });
 });
 
 app.listen(3000);

@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Michalaq/fbtimepartysnoozer#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.16.4",
     "facebook-chat-api": "^1.6.1",
     "readline-sync": "^1.4.9"
