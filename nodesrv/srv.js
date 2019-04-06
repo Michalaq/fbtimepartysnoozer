@@ -3,6 +3,7 @@ const login = require("facebook-chat-api");
 const request = require("request");
 const readlineSync = require("readline-sync");
 const express = require('express');
+const cors = require('cors');
 
 function ans(j, onRespBody) {
     var options = {
@@ -139,6 +140,12 @@ srv = new Srv((api) => {
 const app = express();
 const port = 3000;
 const notStartedMsg = "Server not started yet, try again in a second";
+const corsOptions = {
+    origin: '*',
+    credentials:  true
+};
+
+app.use(cors(corsOptions));
 
 app.post('/snooze/:userId', (req, res) => {
     if (!srv.startedYet) {
