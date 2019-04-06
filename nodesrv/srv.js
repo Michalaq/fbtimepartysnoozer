@@ -2,6 +2,7 @@ const fs = require("fs");
 const login = require("facebook-chat-api");
 const request = require("request");
 const readlineSync = require("readline-sync");
+const express = require('express');
 
 function ans(j, onRespBody) {
     var options = {
@@ -57,22 +58,33 @@ function Srv(onLogin) {
     this.snoozedOn = new Set();
     this.myId = null;
     this.api = null;
+    this.startedYet = false;
 
-    this.sendTo = function(id) {
+    this.suggest = function(id, onMsg) {
         this.api.getThreadHistory(id, 10, undefined, (err, history) => {
             if (err) return console.error(err);
 
-            console.log("history:");
-            console.log(history);
+            // console.log("history:");
+            // console.log(history);
 
             ans({"history": history, "myId": this.myId} , (body) => {
                 // console.log("processed:")
                 // console.log(body.processed);
 
                 d = body.ans.toString();
-                console.log("sending: " + d);
-                this.api.sendMessage(d, id);
+                onMsg(d);
             });
+        });
+    };
+
+    this.sendTo = function(id, onSend) {
+        this.suggest(id, (msg) => {
+            console.log("sending: " + d);
+            this.api.sendMessage(d, id);
+
+            if (onSend) {
+                onSend(d);
+            }
         });
     };
 
@@ -85,7 +97,7 @@ function Srv(onLogin) {
 
     this.unsnooze = function(id) {
         this.snoozedOn.delete(id);
-    }
+    };
 
     login(mkLoginParams(), (err, api) => {
         if (err) return console.error(err);
@@ -103,6 +115,8 @@ function Srv(onLogin) {
             }
         });
 
+        this.startedYet = true;
+
         onLogin(api);
     });
 }
@@ -110,3 +124,42 @@ function Srv(onLogin) {
 srv = new Srv((api) => {
     findBartosz(api, (id) => srv.snooze(id, false));
 });
+
+const app = express();
+const port = 3000;
+const notStartedMsg = "Server not started yet, try again in a second";
+
+app.post('/snooze/:userId', (req, res) => {
+    if (!srv.startedYet) {
+        res.status(503).send(notStartedMsg);
+        return;
+    }
+
+    srv.snooze(req.params.userId, false);
+    res.send("Snoozed");
+});
+
+app.post('/unsnooze/:userId', (req, res) => {
+    srv.unsnooze(req.params.userId);
+    res.send("Unsnoozed");
+});
+
+app.post('/send/:userId', (req, res) => {
+    if (!srv.startedYet) {
+        res.status(503).send(notStartedMsg);
+        return;
+    }
+
+    srv.sendTo(req.params.userId, (msg) => res.send("Sent: " + msg + "\n"));
+});
+
+app.get('/suggest/:userId', (req, res) => {
+    if (!srv.startedYet) {
+        res.status(503).send(notStartedMsg);
+        return;
+    }
+
+    srv.suggest(req.params.userId, (msg) => res.send(msg + "\n"));
+});
+
+app.listen(3000);
