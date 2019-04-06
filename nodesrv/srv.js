@@ -1,6 +1,6 @@
 var request = require('request');
 
-function ans(j) {
+function ans(j, callback) {
     var options = {
         uri: 'http://localhost:5000/answer',
         method: 'POST',
@@ -9,11 +9,11 @@ function ans(j) {
 
     request(options, function (error, response, body) {
       if (!error && response.statusCode == 200) {
-        console.log(body);
+          callback(body);
       } else {
           console.log("err " + error + ", " + response.statusCode);
       }
     });
 }
 
-ans({"test": "test"});
+ans({"test": "test"}, (body) => { console.log(body); });
