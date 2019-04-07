@@ -28,21 +28,6 @@ function ans(j, onRespBody) {
     });
 }
 
-function findBartosz(api, onId) {
-    api.getUserID("Bartosz Michalak", (err, data) => {
-        if (err) return console.error(err);
-
-        for (var i = 0; i < data.length; i++) {
-            console.log("url: " + data[i].profileUrl);
-            if (data[i].profileUrl == "https://www.facebook.com/michalaq") {
-                var id = data[i].userID;
-                console.log("Bartosz' id: " + id);
-                return onId(id);
-            }
-        }
-    });
-}
-
 function mkLoginParams() {
     loginParams = {};
 
@@ -160,7 +145,7 @@ function Srv(onLogin) {
 }
 
 srv = new Srv((api) => {
-    findBartosz(api, (id) => srv.snooze(id, false));
+    return;
 });
 
 const app = express();
