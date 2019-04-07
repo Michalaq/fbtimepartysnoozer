@@ -104,20 +104,21 @@ def naive_fill_map(messages):
         if msg['sender_name'] != me and msg['type'] == 'Generic' and 'content' in msg:
             reply = messages[i + 1]
             if reply['sender_name'] == me and reply['type'] == 'Generic' and 'content' in reply:
-                if reply['content'] < 20:
+                if len(reply['content']) < 30:
                     msg_content = tokenize(msg['content'])
-                    if msg_content in global_msg_map:
-                        global_msg_map[msg_content].append(reply['content'])
-                    else:
-                        global_msg_map[msg_content] = [reply['content']]
+                    if msg_content:
+                        if msg_content in global_msg_map:
+                            global_msg_map[msg_content].append(reply['content'])
+                        else:
+                            global_msg_map[msg_content] = [reply['content']]
 
 
 def fill_map(messages):
     fun = lambda msg: msg['type'] == 'Generic' and 'content' in msg and msg['content']
     messages = list(filter(fun, messages))
     messages.reverse()
-    # naive_fill_map(messages)
-    shingling_fill_map(messages)
+    naive_fill_map(messages)
+    # shingling_fill_map(messages)
 
 
 def fix_unicode(json):
@@ -187,5 +188,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
-    test_main()
+    main()
+    # test_main()
