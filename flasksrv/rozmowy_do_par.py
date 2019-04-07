@@ -91,7 +91,7 @@ def make_rymy(moje):
 
 MAX_COST = 7
 
-def odpowiedz(trie, query):
+def odpowiedz(trie, query, moje):
     for i in range(MAX_COST):
         rets = search(trie, query, i)
         if rets:
@@ -110,9 +110,9 @@ if __name__ == '__main__':
             query = input('> ')
             if mode == 'chat':
                 ret = get_data_from_fixed('../../messages')
-                rozne = make_dict(ret)
+                rozne, moje = make_dict(ret)
                 trie = make_trie(rozne)
-                print(odpowiedz(query))
+                print(odpowiedz(trie, query, moje))
             elif mode == 'rap battle':
                 qsuf = query[-4:]
                 samocnt = sum(map(query.count, 'aeiouy'))
