@@ -158,11 +158,28 @@ def generate_reply(msg_map, input_text):
 
 class ShinglingMessenger:
     def __init__(self, model='map.p'):
+        self.trans = {
+            'chuj': 'ch*j',
+            'kurw': 'k*rw',
+            'jeba': 'je*a',
+            'jebi': 'je*i',
+            'jebu': 'je*u',
+            'jebo': 'je*o',
+            'jeby': 'je*y',
+            'cwel': '****',
+            'cipa': 'ci*a',
+            'pizd': 'piz*'
+        }
         with open(model, 'rb') as pickle_file:
             self.msg_map = pickle.load(pickle_file)
 
     def query(self, query):
-        return generate_reply(self.msg_map, query)
+        return self.censor(generate_reply(self.msg_map, query))
+
+    def censor(self, slowo):
+        for x, y in self.trans.items():
+            slowo = slowo.replace(x, y)
+        return slowo
 
 
 def test_main():
