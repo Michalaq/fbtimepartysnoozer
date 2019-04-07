@@ -80,7 +80,7 @@ function Srv(onLogin) {
                 // console.log("processed:")
                 // console.log(body.processed);
 
-                d = body.ans.toString();
+                var d = body.ans.toString();
                 onMsg(d);
             });
         }, onFail);
@@ -88,7 +88,7 @@ function Srv(onLogin) {
 
     this.sendTo = function(id, onSend, onFail) {
         this.suggest(id, (msg) => {
-            console.log("sending: " + d);
+            console.log("sending: " + msg);
             setTimeout(() => {
                 this.api.markAsRead(id, true, (err) => {
                     if (err) return console.error(err);
@@ -101,15 +101,15 @@ function Srv(onLogin) {
 
                         setTimeout(() => {
                             end();
-                            this.api.sendMessage(d, id);
+                            this.api.sendMessage(msg, id);
 
                             if (onSend) {
-                                onSend(d);
+                                onSend(msg);
                             }
-                        }, getRandomInt(4000, 5000));
-                    }, getRandomInt(2000, 3000));
+                        }, getRandomInt(3000, 4000));
+                    }, getRandomInt(1000, 3000));
                 });
-            }, getRandomInt(1000, 2000));
+            }, getRandomInt(0, 1000));
         }, onFail);
     };
 
