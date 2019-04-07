@@ -23,9 +23,26 @@ alll = glob.glob('./**/*fixed.json')
 for path in tqdm.tqdm(alll):
     ret.extend(process_one(path))
 
+def sanitize(slowo):
+    tab = {
+        'ą': 'a',
+        'ł': 'l',
+        'ć': 'c',
+        'ź': 'z',
+        'ż': 'z',
+        'ę': 'e',
+        'ó': 'o',
+        'ś': 's',
+        'ń': 'n',
+        '?': None,
+        '!': None,
+    }
+    tab = { ord(k): v for k, v in tab.items() }
+    return slowo.lower().translate(tab).strip()
+
 rozne = {}
 for x, y in ret:
-    x = x.lower()
+    x = sanitize(x)
     if x not in rozne:
         rozne[x] = []
     rozne[x].append(y)
