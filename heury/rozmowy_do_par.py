@@ -1,6 +1,8 @@
 import json
 import glob
 import tqdm
+from trie import make_trie, search
+import random
 
 def process_one(path):
     with open(path, 'r') as f:
@@ -18,7 +20,7 @@ def process_one(path):
     return jaodp
 
 ret = []
-alll = glob.glob('./**/*fixed.json')
+alll = glob.glob('../../../messages/inbox/**/*fixed.json')
 
 for path in tqdm.tqdm(alll):
     ret.extend(process_one(path))
@@ -36,6 +38,10 @@ def sanitize(slowo):
         'ń': 'n',
         '?': None,
         '!': None,
+        '\n': ' ',
+        '\t': ' ',
+        '\r': ' '
+
     }
     tab = { ord(k): v for k, v in tab.items() }
     return slowo.lower().translate(tab).strip()
@@ -46,8 +52,47 @@ for x, y in ret:
     if x not in rozne:
         rozne[x] = []
     rozne[x].append(y)
-# powtarzalne = { x: y for x, y in rozne.items() if len(x) < 15 }
-powtarzalne = { x: y for x, y in rozne.items() if len(y) > 1 }
-krotkie = { x: [z for z in y if len(z) < 20 or all(len(z) >= 20 for z in y)] for x, y in powtarzalne.items() }
-for x, y in krotkie.items():
-    print('{}: {}'.format(x, y))
+
+# with open('ret.txt', 'w') as f:
+#     f.write('\n'.join(
+#         '\t'.join([x, y])
+#         for x in rozne
+#         for y in rozne[x]
+#     ))
+
+print('Making trie...')
+trie = make_trie(rozne)
+print('Done.')
+
+trans = {
+    'chuj': 'ch*j',
+    'kurw': 'k*rw',
+    'jeba': 'je*a',
+    'jebi': 'je*i',
+    'jebu': 'je*u',
+    'jebo': 'je*o',
+    'jeby': 'je*y',
+    'cwel': '****',
+    'cipa': 'ci*a',
+    'pizd': 'piz*'
+}
+
+moje = [ x for y in rozne.values() for x in y ]
+
+MAX_COST = 7
+while True:
+    try:
+        query = input('> ')
+        for i in range(MAX_COST):
+            rets = search(trie, query, i)
+            if rets:
+                break
+        if rets:
+            ret = random.choice(random.choice(rets)[-1])
+        else:
+            ret = random.choice(moje)
+        for x, y in trans.items():
+            ret = ret.replace(x, y)
+        print(ret)
+    except KeyboardInterrupt:
+        break
