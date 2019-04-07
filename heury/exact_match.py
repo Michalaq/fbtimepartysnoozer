@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 from os import listdir
 from os.path import join, isfile
-from json import loads
 from nltk import word_tokenize
 from random import randrange
+import pickle
+import json
 
 input_path = '../json/messages/inbox'
 me = 'Jan Kopański'
-msg_map = {}
+global_msg_map = {}
 
 
 def tokenize(text):
@@ -17,14 +18,34 @@ def tokenize(text):
 def insert_map(msg_content, reply_content):
     if type(reply_content) is not list:
         reply_content = [reply_content]
-    if msg_content in msg_map:
-            msg_map[msg_content].extend(reply_content)
+    if msg_content in global_msg_map:
+            global_msg_map[msg_content].extend(reply_content)
     else:
-        msg_map[msg_content] = reply_content
+        global_msg_map[msg_content] = reply_content
 
 
-def sanitize_content(s):
-    return s.strip().lower()
+def sanitize_content(text):
+    tab = {
+        'ą': 'a',
+        'ł': 'l',
+        'ć': 'c',
+        'ź': 'z',
+        'ż': 'z',
+        'ę': 'e',
+        'ó': 'o',
+        'ś': 's',
+        'ń': 'n',
+        '?': None,
+        '!': None,
+        '.': None,
+        ',': None,
+        '\n': ' ',
+        '\t': ' ',
+        '\r': ' '
+    }
+    tab = {ord(k): v for k, v in tab.items()}
+    return text.translate(tab).strip().lower()
+    # return text.strip().lower()
 
 
 def shingling_fill_map(messages):
@@ -51,7 +72,13 @@ def shingling_fill_map(messages):
         # msg_content = sanitize_content(msg_groups[i][-1]['content'])
         # msg_tokens = set(word_tokenize(msg_content))
         assert msg_groups[i][-1]['content'] != me
-        msg_tokens = tokenize(msg_groups[i][-1]['content'])
+        # do not remove this
+        # msg_tokens = tokenize(msg_groups[i][-1]['content'])
+        msg_tokens = set()
+        for m in msg_groups[i]:
+            for w in word_tokenize(sanitize_content(m['content'])):
+                msg_tokens.add(w)
+        msg_tokens = frozenset(msg_tokens)
         max_prop = 0
         reply_content = []
         for reply in msg_groups[i + 1]:
@@ -77,19 +104,20 @@ def naive_fill_map(messages):
         if msg['sender_name'] != me and msg['type'] == 'Generic' and 'content' in msg:
             reply = messages[i + 1]
             if reply['sender_name'] == me and reply['type'] == 'Generic' and 'content' in reply:
-                msg_content = tokenize(msg['content'])
-                if msg_content in msg_map:
-                    msg_map[msg_content].append(reply['content'])
-                else:
-                    msg_map[msg_content] = [reply['content']]
+                if reply['content'] < 20:
+                    msg_content = tokenize(msg['content'])
+                    if msg_content in global_msg_map:
+                        global_msg_map[msg_content].append(reply['content'])
+                    else:
+                        global_msg_map[msg_content] = [reply['content']]
 
 
 def fill_map(messages):
     fun = lambda msg: msg['type'] == 'Generic' and 'content' in msg and msg['content']
     messages = list(filter(fun, messages))
     messages.reverse()
-    naive_fill_map(messages)
-    # shingling_fill_map(messages)
+    # naive_fill_map(messages)
+    shingling_fill_map(messages)
 
 
 def fix_unicode(json):
@@ -103,13 +131,14 @@ def build_map():
         if isfile(json_path):
             with open(json_path) as json_file:
                 json_data = json_file.read()
-                json = loads(json_data)
-                fix_unicode(json)
+                jj = json.loads(json_data)
+                fix_unicode(jj)
                 # print(json['title'])
-                fill_map(json['messages'])
+                fill_map(jj['messages'])
 
 
-def generate_reply(input_text):
+def generate_reply(msg_map, input_text):
+    assert msg_map
     input_tokens = tokenize(input_text)
     max_prop = 0
     reply_content = []
@@ -126,18 +155,37 @@ def generate_reply(input_text):
     return reply_content[randrange(len(reply_content))]
 
 
+class ShinglingMessenger:
+    def __init__(self, model='map.p'):
+        with open(model, 'rb') as pickle_file:
+            self.msg_map = pickle.load(pickle_file)
+
+    def query(self, query):
+        return generate_reply(self.msg_map, query)
+
+
+def test_main():
+    sm = ShinglingMessenger()
+    while True:
+        input_text = input()
+        reply_text = sm.query(input_text)
+        print(reply_text)
+
+
 def main():
     build_map()
     print('build complete')
-    with open('output.txt', 'w') as fout:
-        for k, v in msg_map.items():
-            fout.writelines(str((k, v)) + '\n')
+    # with open('output.txt', 'w') as fout:
+    #     for k, v in global_msg_map.items():
+    #         fout.writelines(str((k, v)) + '\n')
+    with open('map.p', 'wb') as map_file:
+        pickle.dump(global_msg_map, map_file)
     print('save complete')
     while True:
         input_text = input()
-        print(generate_reply(input_text))
-    print('EOF')
+        print(generate_reply(global_msg_map, input_text))
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test_main()
