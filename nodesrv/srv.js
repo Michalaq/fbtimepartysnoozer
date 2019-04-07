@@ -5,6 +5,12 @@ const readlineSync = require("readline-sync");
 const express = require('express');
 const cors = require('cors');
 
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function ans(j, onRespBody) {
     var options = {
         uri: "http://localhost:5000/answer",
@@ -98,11 +104,27 @@ function Srv(onLogin) {
     this.sendTo = function(id, onSend, onFail) {
         this.suggest(id, (msg) => {
             console.log("sending: " + d);
-            this.api.sendMessage(d, id);
+            setTimeout(() => {
+                this.api.markAsRead(id, true, (err) => {
+                    if (err) return console.error(err);
 
-            if (onSend) {
-                onSend(d);
-            }
+                    setTimeout(() => {
+                        console.log("marked as read");
+                        end = this.api.sendTypingIndicator(id, (err) => {
+                            if (err) return console.error(err);
+                        });
+
+                        setTimeout(() => {
+                            end();
+                            this.api.sendMessage(d, id);
+
+                            if (onSend) {
+                                onSend(d);
+                            }
+                        }, getRandomInt(4000, 5000));
+                    }, getRandomInt(2000, 3000));
+                });
+            }, getRandomInt(1000, 2000));
         }, onFail);
     };
 
