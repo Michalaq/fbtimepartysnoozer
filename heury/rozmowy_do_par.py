@@ -61,6 +61,7 @@ for x, y in ret:
 #     ))
 
 print('Making trie...')
+# trie = None
 trie = make_trie(rozne)
 print('Done.')
 
@@ -77,22 +78,58 @@ trans = {
     'pizd': 'piz*'
 }
 
+def censor(slowo):
+    for x, y in trans.items():
+        slowo = slowo.replace(x, y)
+    return slowo
+
 moje = [ x for y in rozne.values() for x in y ]
 
+rymy = {}
+for x in moje:
+    suf = x[-4:]
+    if suf not in rymy:
+        rymy[suf] = {}
+    samocnt = sum(map(x.count, 'aeiouy'))
+    if samocnt not in rymy[suf]:
+        rymy[suf][samocnt] = []
+    rymy[suf][samocnt].append(x)
+
 MAX_COST = 7
-while True:
-    try:
-        query = input('> ')
-        for i in range(MAX_COST):
-            rets = search(trie, query, i)
-            if rets:
-                break
+
+def odpowiedz(query):
+    for i in range(MAX_COST):
+        rets = search(trie, query, i)
         if rets:
-            ret = random.choice(random.choice(rets)[-1])
-        else:
-            ret = random.choice(moje)
-        for x, y in trans.items():
-            ret = ret.replace(x, y)
-        print(ret)
-    except KeyboardInterrupt:
-        break
+            break
+    if rets:
+        ret = random.choice(random.choice(rets)[-1])
+    else:
+        ret = random.choice(moje)
+    ret = censor(ret)
+    return ret
+
+if __name__ == '__main__':
+    mode = input('mode: ')
+    while True:
+        try:
+            query = input('> ')
+            if mode == 'chat':
+                print(odpowiedz(query))
+            elif mode == 'rap battle':
+                qsuf = query[-4:]
+                samocnt = sum(map(query.count, 'aeiouy'))
+                if qsuf not in rymy:
+                    print(censor(qsuf*(samocnt // 2)))
+                    continue
+                dists = {
+                    (
+                        abs(samocnt - x)
+                    ): [y for y in rymy[qsuf][x] if sanitize(y.split(' ')[-1]) != sanitize(query.split(' ')[-1])] for x in rymy[qsuf] 
+                }
+                for i in range(100):
+                    if i in dists and dists[i]:
+                        print(censor(random.choice(dists[i])))
+                        break
+        except KeyboardInterrupt:
+            break
